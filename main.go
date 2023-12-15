@@ -113,6 +113,10 @@ func getRecap(username, accessKey string) (*unsplash.Recap, error) {
 		return nil, err
 	}
 
+	if len(photos) == 0 {
+		return nil, fmt.Errorf("user has no photos")
+	}
+
 	// Get users photo if last photo is still in 2023 get next page
 	for i := 2; utils.CheckLastPhotoYear(photos, 2023); i++ {
 		log.Println("Getting page:", i)

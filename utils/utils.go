@@ -45,7 +45,10 @@ func GetRecapFromPhotos(photos []*unsplash.UserPhoto) *unsplash.Recap {
 	}
 
 	sortedList := SortByLikes(photos)
-	recap.TopPhotos = sortedList[:5]
+
+	if len(sortedList) > 5 {
+		sortedList = sortedList[:5]
+	}
 
 	return &recap
 }
@@ -61,7 +64,7 @@ func GetUsernameFromBody(body string) (username string, err error) {
 	var user struct {
 		Username string `json:"username"`
 	}
-	
+
 	err = json.Unmarshal([]byte(jsonString), &user)
 	if err != nil {
 		log.Errorf("error unmarshalling username: %v", err)
