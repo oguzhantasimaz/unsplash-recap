@@ -38,7 +38,7 @@ func HandleRequest(ctx context.Context, event UnsplashRecapEvent) (*utils.Respon
 	if accessKey == "" {
 		return utils.JSONResponse(500, "unsplash access key is empty", utils.ErrorResponseBody{Message: "unsplash access key is empty"}), fmt.Errorf("unsplash access key is empty")
 	}
-	redisUrl := os.Getenv("UPSTASH_REDIS_REST_URL")
+	redisUrl := os.Getenv("UPSTASH_REDIS_URL")
 	if redisUrl == "" {
 		return utils.JSONResponse(500, "redis url is empty", utils.ErrorResponseBody{Message: "redis url is empty"}), fmt.Errorf("redis url is empty")
 	}
