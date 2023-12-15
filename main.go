@@ -86,6 +86,14 @@ func HandleRequest(ctx context.Context, event UnsplashRecapEvent) (*utils.Respon
 		return utils.JSONResponse(500, err.Error(), nil), fmt.Errorf("error getting recap: %v", err)
 	}
 
+	if recap == nil {
+		return utils.JSONResponse(500, "Internal Server Error", nil), fmt.Errorf("recap is nil")
+	}
+
+	if recap.TotalPhotos == 0 {
+		return utils.JSONResponse(500, "Internal Server Error", nil), fmt.Errorf("user has no photos")
+	}
+
 	// Marshal recap
 	jsonRecap, err := json.Marshal(recap)
 	if err != nil {
