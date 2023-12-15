@@ -1,2 +1,4 @@
-# unsplash-recap
-Your unsplash recap for 2023!
+
+## Build Command
+`GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o main main.go
+`
