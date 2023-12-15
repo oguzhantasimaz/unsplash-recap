@@ -1,6 +1,7 @@
 package unsplash
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 
@@ -45,6 +46,13 @@ func (c *Client) Get(url string, queryParameters map[string]string) ([]byte, err
 	if err != nil {
 		log.Error(err)
 		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("user not found")
+	} else if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code %d", resp.StatusCode)
 	}
 
 	var body []byte

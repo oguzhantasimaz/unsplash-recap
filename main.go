@@ -31,26 +31,26 @@ func HandleRequest(ctx context.Context, event UnsplashRecapEvent) (*utils.Respon
 	// Validate event
 	err := event.Validate()
 	if err != nil {
-		return utils.JSONResponse(400, err.Error(), nil), fmt.Errorf("error validating event: %v", err)
+		return utils.JSONResponse(400, err.Error(), err.Error()), nil
 	}
 
 	accessKey := os.Getenv("UNSPLASH_ACCESS_KEY")
 	if accessKey == "" {
-		return utils.JSONResponse(500, "unsplash access key is empty", nil), fmt.Errorf("unsplash access key is empty")
+		return utils.JSONResponse(500, "unsplash access key is empty", utils.ErrorResponseBody{Message: "unsplash access key is empty"}), nil
 	}
 	redisUrl := os.Getenv("UPSTASH_REDIS_REST_URL")
 	if redisUrl == "" {
-		return utils.JSONResponse(500, "redis url is empty", nil), fmt.Errorf("redis url is empty")
+		return utils.JSONResponse(500, "redis url is empty", utils.ErrorResponseBody{Message: "redis url is empty"}), nil
 	}
 	redisPwd := os.Getenv("UPSTASH_REDIS_PASSWORD")
 	if redisPwd == "" {
-		return utils.JSONResponse(500, "redis token is empty", nil), fmt.Errorf("redis token is empty")
+		return utils.JSONResponse(500, "redis token is empty", utils.ErrorResponseBody{Message: "redis token is empty"}), nil
 	}
 
 	// Create opt for redis client
 	opt, err := redis.ParseURL(fmt.Sprintf("rediss://default:%s@%s:32362", redisPwd, redisUrl))
 	if err != nil {
-		return utils.JSONResponse(500, err.Error(), nil), fmt.Errorf("error parsing redis url: %v", err)
+		return utils.JSONResponse(500, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), nil
 	}
 
 	// Create redis client
@@ -58,13 +58,13 @@ func HandleRequest(ctx context.Context, event UnsplashRecapEvent) (*utils.Respon
 
 	username, err := utils.GetUsernameFromBody(event.Body)
 	if err != nil {
-		return utils.JSONResponse(400, err.Error(), nil), fmt.Errorf("error getting username from body: %v", err)
+		return utils.JSONResponse(400, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), nil
 	}
 
 	// Check if username is cached
 	cached, err := client.Get(ctx, username).Result()
 	if err != redis.Nil && err != nil {
-		return utils.JSONResponse(500, err.Error(), nil), fmt.Errorf("error getting username from cache: %v", err)
+		return utils.JSONResponse(500, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), nil
 	}
 	if cached != "" {
 		log.Println("Username is cached")
@@ -73,7 +73,7 @@ func HandleRequest(ctx context.Context, event UnsplashRecapEvent) (*utils.Respon
 		var recap *unsplash.Recap
 		err = json.Unmarshal([]byte(cached), &recap)
 		if err != nil {
-			return utils.JSONResponse(500, err.Error(), nil), fmt.Errorf("error unmarshalling cached username: %v", err)
+			return utils.JSONResponse(500, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), nil
 		}
 
 		return utils.JSONResponse(200, "Success", recap), nil
@@ -83,27 +83,27 @@ func HandleRequest(ctx context.Context, event UnsplashRecapEvent) (*utils.Respon
 	var recap *unsplash.Recap
 	recap, err = getRecap(username, accessKey)
 	if err != nil {
-		return utils.JSONResponse(500, err.Error(), nil), fmt.Errorf("error getting recap: %v", err)
+		return utils.JSONResponse(500, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), nil
 	}
 
 	if recap == nil {
-		return utils.JSONResponse(500, "recap is nil", nil), fmt.Errorf("recap is nil")
+		return utils.JSONResponse(500, "recap is nil", utils.ErrorResponseBody{Message: "recap is nil"}), nil
 	}
 
 	if recap.TotalPhotos == 0 {
-		return utils.JSONResponse(500, "user has no photos", nil), fmt.Errorf("user has no photos")
+		return utils.JSONResponse(500, "user has no photos", utils.ErrorResponseBody{Message: "user has no photos"}), nil
 	}
 
 	// Marshal recap
 	jsonRecap, err := json.Marshal(recap)
 	if err != nil {
-		return utils.JSONResponse(500, err.Error(), nil), fmt.Errorf("error marshalling recap: %v", err)
+		return utils.JSONResponse(500, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), nil
 	}
 
 	// Cache username
 	err = client.Set(ctx, username, jsonRecap, 0).Err()
 	if err != redis.Nil && err != nil {
-		return utils.JSONResponse(500, err.Error(), nil), fmt.Errorf("error caching username: %v", err)
+		return utils.JSONResponse(500, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), nil
 	}
 
 	return utils.JSONResponse(200, "Success", recap), nil
@@ -125,14 +125,24 @@ func getRecap(username, accessKey string) (*unsplash.Recap, error) {
 		return nil, fmt.Errorf("user has no photos")
 	}
 
-	// Get users photo if last photo is still in 2023 get next page
-	for i := 2; utils.CheckLastPhotoYear(photos, 2023); i++ {
-		log.Println("Getting page:", i)
-		newPagePhotos, err := client.Photo().GetUserPhotos(username, i)
-		if err != nil {
-			return nil, err
+	if photos[0].CreatedAt.Year() < 2023 {
+		return nil, fmt.Errorf("user has no photos in 2023")
+	}
+
+	if len(photos) == 30 {
+		// Get users photo if last photo is still in 2023 get next page
+		for i := 2; utils.CheckLastPhotoYear(photos, 2023); i++ {
+			log.Println("Getting page:", i)
+			newPagePhotos, err := client.Photo().GetUserPhotos(username, i)
+			if err != nil {
+				return nil, err
+			}
+			if len(newPagePhotos) <= 30 {
+				photos = append(photos, newPagePhotos...)
+				break
+			}
+			photos = append(photos, newPagePhotos...)
 		}
-		photos = append(photos, newPagePhotos...)
 	}
 
 	// Filter photos by year

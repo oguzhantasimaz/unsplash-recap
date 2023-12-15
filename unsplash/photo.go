@@ -28,14 +28,12 @@ func (s *PhotoService) GetUserPhotos(username string, page int) (photos []*UserP
 	var userPhotos []*UserPhoto
 
 	url := fmt.Sprintf("%s/users/%s/photos", s.client.BaseURL, username)
-	log.Info("URL: ", url)
 	body, err := s.client.Get(url, queryParameters)
 	if err != nil {
 		log.Error(err)
 		return nil, err
 	}
 
-	log.Info(string(body))
 	err = json.Unmarshal(body, &userPhotos)
 	if err != nil {
 		log.Error(err)

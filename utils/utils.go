@@ -77,7 +77,7 @@ func GetUsernameFromBody(body string) (username string, err error) {
 	return user.Username, nil
 }
 
-func JSONResponse(statusCode int, message string, body *unsplash.Recap) *Response {
+func JSONResponse(statusCode int, message string, body interface{}) *Response {
 	return &Response{
 		StatusCode: statusCode,
 		Message:    message,
