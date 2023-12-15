@@ -21,12 +21,12 @@ func CheckLastPhotoYear(photos []*unsplash.UserPhoto, year int) bool {
 	return photos[len(photos)-1].CreatedAt.Year() == year
 }
 
-func SortByLikes(photos []*unsplash.UserPhoto) []*unsplash.UserPhoto {
+func SortByViews(photos []*unsplash.UserPhoto) []*unsplash.UserPhoto {
 	sortedPhotos := make([]*unsplash.UserPhoto, len(photos))
 	copy(sortedPhotos, photos)
 	for i := 0; i < len(sortedPhotos); i++ {
 		for j := 0; j < len(sortedPhotos)-1; j++ {
-			if sortedPhotos[j].Likes < sortedPhotos[j+1].Likes {
+			if sortedPhotos[j].Statistics.Views.Total < sortedPhotos[j+1].Statistics.Views.Total {
 				sortedPhotos[j], sortedPhotos[j+1] = sortedPhotos[j+1], sortedPhotos[j]
 			}
 		}
@@ -44,11 +44,13 @@ func GetRecapFromPhotos(photos []*unsplash.UserPhoto) *unsplash.Recap {
 		recap.TotalDownloads += photo.Statistics.Downloads.Total
 	}
 
-	sortedList := SortByLikes(photos)
+	sortedList := SortByViews(photos)
 
 	if len(sortedList) > 5 {
 		sortedList = sortedList[:5]
 	}
+
+	recap.TopPhotos = sortedList
 
 	return &recap
 }

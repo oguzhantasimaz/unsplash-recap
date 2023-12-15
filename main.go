@@ -36,21 +36,21 @@ func HandleRequest(ctx context.Context, event UnsplashRecapEvent) (*utils.Respon
 
 	accessKey := os.Getenv("UNSPLASH_ACCESS_KEY")
 	if accessKey == "" {
-		return utils.JSONResponse(500, "Internal Server Error", nil), fmt.Errorf("unsplash access key is empty")
+		return utils.JSONResponse(500, "unsplash access key is empty", nil), fmt.Errorf("unsplash access key is empty")
 	}
 	redisUrl := os.Getenv("UPSTASH_REDIS_REST_URL")
 	if redisUrl == "" {
-		return utils.JSONResponse(500, "Internal Server Error", nil), fmt.Errorf("redis url is empty")
+		return utils.JSONResponse(500, "redis url is empty", nil), fmt.Errorf("redis url is empty")
 	}
 	redisPwd := os.Getenv("UPSTASH_REDIS_PASSWORD")
 	if redisPwd == "" {
-		return utils.JSONResponse(500, "Internal Server Error", nil), fmt.Errorf("redis token is empty")
+		return utils.JSONResponse(500, "redis token is empty", nil), fmt.Errorf("redis token is empty")
 	}
 
 	// Create opt for redis client
 	opt, err := redis.ParseURL(fmt.Sprintf("rediss://default:%s@%s:32362", redisPwd, redisUrl))
 	if err != nil {
-		return utils.JSONResponse(500, "Internal Server Error", nil), fmt.Errorf("error parsing redis url: %v", err)
+		return utils.JSONResponse(500, err.Error(), nil), fmt.Errorf("error parsing redis url: %v", err)
 	}
 
 	// Create redis client
@@ -64,7 +64,7 @@ func HandleRequest(ctx context.Context, event UnsplashRecapEvent) (*utils.Respon
 	// Check if username is cached
 	cached, err := client.Get(ctx, username).Result()
 	if err != redis.Nil && err != nil {
-		return utils.JSONResponse(500, "Internal Server Error", nil), fmt.Errorf("error getting username from cache: %v", err)
+		return utils.JSONResponse(500, err.Error(), nil), fmt.Errorf("error getting username from cache: %v", err)
 	}
 	if cached != "" {
 		log.Println("Username is cached")
@@ -73,7 +73,7 @@ func HandleRequest(ctx context.Context, event UnsplashRecapEvent) (*utils.Respon
 		var recap *unsplash.Recap
 		err = json.Unmarshal([]byte(cached), &recap)
 		if err != nil {
-			return utils.JSONResponse(500, "Internal Server Error", nil), fmt.Errorf("error unmarshalling cached username: %v", err)
+			return utils.JSONResponse(500, err.Error(), nil), fmt.Errorf("error unmarshalling cached username: %v", err)
 		}
 
 		return utils.JSONResponse(200, "Success", recap), nil
@@ -87,23 +87,23 @@ func HandleRequest(ctx context.Context, event UnsplashRecapEvent) (*utils.Respon
 	}
 
 	if recap == nil {
-		return utils.JSONResponse(500, "Internal Server Error", nil), fmt.Errorf("recap is nil")
+		return utils.JSONResponse(500, "recap is nil", nil), fmt.Errorf("recap is nil")
 	}
 
 	if recap.TotalPhotos == 0 {
-		return utils.JSONResponse(500, "Internal Server Error", nil), fmt.Errorf("user has no photos")
+		return utils.JSONResponse(500, "user has no photos", nil), fmt.Errorf("user has no photos")
 	}
 
 	// Marshal recap
 	jsonRecap, err := json.Marshal(recap)
 	if err != nil {
-		return utils.JSONResponse(500, "Internal Server Error", nil), fmt.Errorf("error marshalling recap: %v", err)
+		return utils.JSONResponse(500, err.Error(), nil), fmt.Errorf("error marshalling recap: %v", err)
 	}
 
 	// Cache username
 	err = client.Set(ctx, username, jsonRecap, 0).Err()
 	if err != redis.Nil && err != nil {
-		return utils.JSONResponse(500, "Internal Server Error", nil), fmt.Errorf("error caching username: %v", err)
+		return utils.JSONResponse(500, err.Error(), nil), fmt.Errorf("error caching username: %v", err)
 	}
 
 	return utils.JSONResponse(200, "Success", recap), nil
