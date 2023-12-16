@@ -137,7 +137,7 @@ func getRecap(username, accessKey string) (*unsplash.Recap, error) {
 			if err != nil {
 				return nil, err
 			}
-			if len(newPagePhotos) <= 30 {
+			if len(newPagePhotos) < 30 {
 				photos = append(photos, newPagePhotos...)
 				break
 			}
