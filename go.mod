@@ -1,4 +1,4 @@
-module unsplash-recap
+module github.com/oguzhantasimaz/unsplash-recap
 
 go 1.21.1
 

@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/oguzhantasimaz/unsplash-recap/unsplash"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
-	"unsplash-recap/unsplash"
 )
 
 type Client struct {

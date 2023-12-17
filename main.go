@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/oguzhantasimaz/unsplash-recap/unsplash"
+	"github.com/oguzhantasimaz/unsplash-recap/upstash"
+	"github.com/oguzhantasimaz/unsplash-recap/utils"
 	log "github.com/sirupsen/logrus"
 	"os"
-	"unsplash-recap/unsplash"
-	"unsplash-recap/upstash"
-	"unsplash-recap/utils"
 )
 
 type UnsplashRecapEvent struct {

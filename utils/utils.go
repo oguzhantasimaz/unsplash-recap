@@ -2,9 +2,9 @@ package utils
 
 import (
 	"encoding/json"
+	"github.com/oguzhantasimaz/unsplash-recap/unsplash"
 	log "github.com/sirupsen/logrus"
 	"strings"
-	"unsplash-recap/unsplash"
 )
 
 func FilterByYear(photos []*unsplash.UserPhoto, year int) []*unsplash.UserPhoto {
