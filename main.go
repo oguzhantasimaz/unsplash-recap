@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"unsplash-recap/unsplash"
+	"unsplash-recap/upstash"
 	"unsplash-recap/utils"
 )
 
@@ -38,40 +38,35 @@ func HandleRequest(ctx context.Context, event UnsplashRecapEvent) (*utils.Respon
 	if accessKey == "" {
 		return utils.JSONResponse(500, "unsplash access key is empty", utils.ErrorResponseBody{Message: "unsplash access key is empty"}), fmt.Errorf("unsplash access key is empty")
 	}
-	redisUrl := os.Getenv("UPSTASH_REDIS_URL")
+	redisUrl := os.Getenv("UPSTASH_REDIS_REST_URL")
 	if redisUrl == "" {
 		return utils.JSONResponse(500, "redis url is empty", utils.ErrorResponseBody{Message: "redis url is empty"}), fmt.Errorf("redis url is empty")
 	}
-	redisPwd := os.Getenv("UPSTASH_REDIS_PASSWORD")
-	if redisPwd == "" {
+	redisToken := os.Getenv("UPSTASH_REDIS_REST_TOKEN")
+	if redisToken == "" {
 		return utils.JSONResponse(500, "redis token is empty", utils.ErrorResponseBody{Message: "redis token is empty"}), fmt.Errorf("redis token is empty")
 	}
-
-	// Create opt for redis client
-	opt, err := redis.ParseURL(fmt.Sprintf("rediss://default:%s@%s:32362", redisPwd, redisUrl))
-	if err != nil {
-		return utils.JSONResponse(500, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), fmt.Errorf("failed to parse redis url: %s", err.Error())
-	}
-
-	// Create redis client
-	client := redis.NewClient(opt)
 
 	username, err := utils.GetUsernameFromBody(event.Body)
 	if err != nil {
 		return utils.JSONResponse(400, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), nil
 	}
 
+	// Create Upstash Redis REST client
+	client := upstash.NewClient(redisUrl, redisToken)
+
 	// Check if username is cached
-	cached, err := client.Get(ctx, username).Result()
-	if err != redis.Nil && err != nil {
-		return utils.JSONResponse(500, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), fmt.Errorf("failed to get username from redis: %s", err.Error())
+	cached, err := client.Get(username)
+	if err != nil {
+		log.Error(err)
+		return utils.JSONResponse(500, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), fmt.Errorf("failed to get cached username: %s", err.Error())
 	}
-	if cached != "" {
-		log.Println("Username is cached")
+	if cached != nil {
+		log.Printf("username: %s is cached", username)
 
 		// Unmarshal cached username
 		var recap *unsplash.Recap
-		err = json.Unmarshal([]byte(cached), &recap)
+		err = json.Unmarshal([]byte(*cached), &recap)
 		if err != nil {
 			return utils.JSONResponse(500, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), fmt.Errorf("failed to unmarshal cached username: %s", err.Error())
 		}
@@ -94,16 +89,10 @@ func HandleRequest(ctx context.Context, event UnsplashRecapEvent) (*utils.Respon
 		return utils.JSONResponse(500, "user has no photos", utils.ErrorResponseBody{Message: "user has no photos"}), nil
 	}
 
-	// Marshal recap
-	jsonRecap, err := json.Marshal(recap)
+	err = client.Set(username, recap)
 	if err != nil {
-		return utils.JSONResponse(500, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), fmt.Errorf("failed to marshal recap: %s", err.Error())
-	}
-
-	// Cache username
-	err = client.Set(ctx, username, jsonRecap, 0).Err()
-	if err != redis.Nil && err != nil {
-		return utils.JSONResponse(500, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), fmt.Errorf("failed to cache username: %s", err.Error())
+		log.Error(err)
+		return utils.JSONResponse(500, err.Error(), utils.ErrorResponseBody{Message: err.Error()}), fmt.Errorf("failed to set cached username: %s", err.Error())
 	}
 
 	return utils.JSONResponse(200, "Success", recap), nil
@@ -132,7 +121,6 @@ func getRecap(username, accessKey string) (*unsplash.Recap, error) {
 	if len(photos) == 30 {
 		// Get users photo if last photo is still in 2023 get next page
 		for i := 2; utils.CheckLastPhotoYear(photos, 2023); i++ {
-			log.Println("Getting page:", i)
 			newPagePhotos, err := client.Photo().GetUserPhotos(username, i)
 			if err != nil {
 				return nil, err
