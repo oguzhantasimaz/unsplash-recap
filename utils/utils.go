@@ -74,7 +74,7 @@ func GetUsernameFromBody(body string) (username string, err error) {
 	}
 
 	// Access the parsed data
-	return user.Username, nil
+	return strings.ToLower(user.Username), nil
 }
 
 func JSONResponse(statusCode int, message string, body interface{}) *Response {
