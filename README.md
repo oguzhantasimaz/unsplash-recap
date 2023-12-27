@@ -1,4 +1,5 @@
+# Unsplash 2023 Recap Project
 
-## Build Command
-`GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o main main.go
-`
+This is a project for the Unsplash 2023 Recap. 
+
+You can find the blog post on how it was made [here](https://upstash.com/blog/unsplash-2023-recap).
